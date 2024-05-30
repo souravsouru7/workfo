@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Page</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        h1 {
+            font-size: 2.5rem;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+        h2 {
+            font-size: 1.8rem;
+            color: #444;
+            margin-bottom: 1rem;
+        }
+        #streams-container {
+            width: 90%;
+            max-width: 1200px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .video-container {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin: 10px;
+            padding: 10px;
+            text-align: center;
+            width: 300px;
+        }
+        .video-container img {
+            border-radius: 8px;
+            width: 100%;
+            height: auto;
+        }
+        .username-label {
+            font-weight: bold;
+            color: #555;
+            margin-top: 10px;
+        }
+        #logoutButton {
+            background-color: #d32f2f;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 1.2rem;
+            margin-top: 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #logoutButton:hover {
+            background-color: #b71c1c;
+        }
+    </style>
+</head>
+<body>
+    <h1>Admin Page</h1>
+    <div id="streams-container">
+        <h2>Live Camera Streams</h2>
+    </div>
+    <button id="logoutButton" onclick="window.location.href='/logout'">Logout</button>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        // Receive stream from server
+        socket.on('stream', (data) => {
+            const { userId, username, image } = data;
+            let videoContainer = document.getElementById(`container-${userId}`);
+
+            if (!videoContainer) {
+                const streamsContainer = document.getElementById('streams-container');
+                videoContainer = document.createElement('div');
+                videoContainer.id = `container-${userId}`;
+                videoContainer.className = 'video-container';
+
+                const video = document.createElement('img');
+                video.id = `remote-video-${userId}`;
+
+                const usernameLabel = document.createElement('div');
+                usernameLabel.className = 'username-label';
+                usernameLabel.textContent = username;
+
+                videoContainer.appendChild(video);
+                videoContainer.appendChild(usernameLabel);
+                streamsContainer.appendChild(videoContainer);
+            } else {
+                const video = document.getElementById(`remote-video-${userId}`);
+                video.src = image;
+            }
+        });
+    </script>
+</body>
+</html>

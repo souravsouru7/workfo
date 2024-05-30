@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Page</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            color: #fff;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        #clockInButton {
+            background-color: #ff9800;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 1.5rem;
+            margin-top: 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #clockInButton:hover {
+            background-color: #e68900;
+        }
+        #logoutButton {
+            background-color: #d32f2f;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 1.2rem;
+            margin-top: 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #logoutButton:hover {
+            background-color: #b71c1c;
+        }
+        #workMessage {
+            font-size: 1.5rem;
+            margin-top: 20px;
+            display: none;
+        }
+        #workTime {
+            font-size: 1.5rem;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Good Morning, <span id="username"><%= username %></span></h1>
+        <button id="clockInButton">Clock In</button>
+        <div id="workMessage">You have started your work.</div>
+        <div id="workTime"></div>
+        <video id="video" width="640" height="480" autoplay style="display:none;"></video>
+        <button id="logoutButton" onclick="logout()">Logout</button>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        // Get logged-in user's name
+        const username = "<%= username %>";
+        document.getElementById("username").textContent = username;
+
+        let clockInTime;
+        let clockOutTime;
+        let clockedIn = false;
+
+        document.getElementById('clockInButton').addEventListener('click', () => {
+            if (!clockedIn) {
+                clockIn();
+            } else {
+                clockOut();
+            }
+        });
+
+        function clockIn() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    const video = document.getElementById('video');
+                    video.srcObject = stream;
+                    video.play();
+                    
+                    clockInTime = new Date();
+                    clockedIn = true;
+                    document.getElementById('clockInButton').textContent = 'Clock Out';
+                    document.getElementById('workMessage').style.display = 'block';
+
+                    // Send stream to server
+                    setInterval(() => {
+                        if (!clockedIn) return;
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        const context = canvas.getContext('2d');
+                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const image = canvas.toDataURL('image/jpeg');
+                        socket.emit('stream', { userId: "<%= user._id %>", username: "<%= username %>", image });
+                    }, 100);
+                })
+                .catch((error) => {
+                    console.error('Error accessing user media:', error);
+                });
+        }
+
+        function clockOut() {
+            const video = document.getElementById('video');
+            const stream = video.srcObject;
+            const tracks = stream.getTracks();
+
+            tracks.forEach(track => track.stop());
+            video.style.display = 'none';
+
+            clockOutTime = new Date();
+            clockedIn = false;
+            document.getElementById('clockInButton').textContent = 'Clock In';
+            document.getElementById('workMessage').style.display = 'none';
+
+            const workedTime = (clockOutTime - clockInTime) / 1000;
+            const hours = Math.floor(workedTime / 3600);
+            const minutes = Math.floor((workedTime % 3600) / 60);
+            const seconds = Math.floor(workedTime % 60);
+
+            document.getElementById('workTime').textContent = `You worked for ${hours}h ${minutes}m ${seconds}s today.`;
+        }
+
+        function logout() {
+            if (clockedIn) {
+                alert('You must clock out before logging out.');
+            } else {
+                window.location.href = '/logout';
+            }
+        }
+    </script>
+</body>
+</html>
